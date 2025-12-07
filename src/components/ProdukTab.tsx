@@ -14,7 +14,10 @@ interface ProdukTabProps {
 
 function ProdukTab({ onSendRequest, loading }: ProdukTabProps) {
   const [method, setMethod] = useState<string>('POST');
-  const [url, setUrl] = useState('');
+  // Get base URL from environment variable
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost';
+  const defaultUrl = `${baseUrl}/DBREST/api/produk.php`;
+  const [url, setUrl] = useState(defaultUrl);
   const [error, setError] = useState<string>('');
   const [fetchingData, setFetchingData] = useState<boolean>(false);
   const [formData, setFormData] = useState({
@@ -218,7 +221,7 @@ function ProdukTab({ onSendRequest, loading }: ProdukTabProps) {
           </div>
             <Input
               type="text"
-              placeholder="https://api.example.com/produk"
+              placeholder={defaultUrl}
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value);

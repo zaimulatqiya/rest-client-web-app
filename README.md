@@ -1,4 +1,54 @@
-# React + TypeScript + Vite
+# REST Client - React + TypeScript + Vite
+
+Aplikasi REST Client untuk testing API dengan interface modern dan user-friendly.
+
+## Setup Environment Variables
+
+### 1. Buat File `.env`
+
+Copy file `.env.example` ke `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Atau buat file `.env` manual dengan isi:
+
+```env
+# Base URL untuk API
+VITE_API_BASE_URL=http://localhost
+```
+
+### 2. Konfigurasi Base URL
+
+File `.env` digunakan untuk mengatur base URL API. Default URL yang digunakan:
+
+- **Produk API**: `{VITE_API_BASE_URL}/DBREST/api/produk.php`
+- **Transaksi API**: `{VITE_API_BASE_URL}/DBREST/api/transaksi.php`
+
+Contoh:
+
+- Development: `VITE_API_BASE_URL=http://localhost`
+- Production: `VITE_API_BASE_URL=https://api.example.com`
+
+### 3. Restart Dev Server
+
+Setelah mengubah `.env`, restart dev server:
+
+```bash
+npm run dev
+```
+
+## Features
+
+- 🎨 Modern UI dengan design dashboard yang aesthetic
+- 🔄 Support semua HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+- 📝 Form khusus untuk Produk dan Transaksi
+- 📊 Response viewer dengan syntax highlighting
+- 📜 History panel untuk request sebelumnya
+- ⚡ Fast dengan Vite HMR
+
+## Development
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
@@ -17,9 +67,9 @@ If you are developing a production application, we recommend updating the config
 
 ```js
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       // Other configs...
 
@@ -34,40 +84,40 @@ export default defineConfig([
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
         tsconfigRootDir: import.meta.dirname,
       },
       // other options...
     },
   },
-])
+]);
 ```
 
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js
 // eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+import reactX from "eslint-plugin-react-x";
+import reactDom from "eslint-plugin-react-dom";
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       // Other configs...
       // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
+      reactX.configs["recommended-typescript"],
       // Enable lint rules for React DOM
       reactDom.configs.recommended,
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
         tsconfigRootDir: import.meta.dirname,
       },
       // other options...
     },
   },
-])
+]);
 ```
