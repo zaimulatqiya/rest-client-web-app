@@ -1,0 +1,276 @@
+<?php
+
+include '../db/database.php';
+
+// CORS Headers - HARUS DI ATAS
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Max-Age: 3600");
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+$method = $_SERVER['REQUEST_METHOD'];
+$input  = json_decode(file_get_contents('php://input'), true);
+
+switch ($method) {
+    // GET /api/transaksi.php
+    // GET /api/transaksi.php?id=7
+    case 'GET':
+        if (isset($_GET['id'])) {
+            $id = (int) $_GET['id'];
+            
+            // header transaksi
+            $sqlHeader = "SELECT * FROM transaksi WHERE id = ?";
+            $stmt = $conn->prepare($sqlHeader);
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $resHeader = $stmt->get_result();
+            $header = $resHeader->fetch_assoc();
+            
+            if (!$header) {
+                http_response_code(404);
+                echo json_encode(["message" => "Transaksi tidak ditemukan"]);
+                break;
+            }
+            
+            // detail + info produk
+            $sqlDetail = "
+                SELECT td.qty,
+                       td.harga_satuan,
+                       td.subtotal,
+                       p.nama_parfum,
+                       p.ukuran_ml,
+                       td.produk_id
+                FROM transaksi_detail td
+                JOIN produk p ON td.produk_id = p.id
+                WHERE td.transaksi_id = ?
+            ";
+            $stmt = $conn->prepare($sqlDetail);
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $resDetail = $stmt->get_result();
+            
+            $items = [];
+            while ($row = $resDetail->fetch_assoc()) {
+                $items[] = [
+                    "produk_id"     => (int) $row["produk_id"],
+                    "nama_parfum"  => $row["nama_parfum"],
+                    "ukuran_ml"    => (int) $row["ukuran_ml"],
+                    "qty"          => (int) $row["qty"],
+                    "harga_satuan" => (float) $row["harga_satuan"],
+                    "subtotal"     => (float) $row["subtotal"]
+                ];
+            }
+            
+            $data = [
+                "id"               => (int) $header["id"],
+                "tanggal"          => $header["tanggal"],
+                "nama_pelanggan"   => $header["nama_pelanggan"],
+                "total_pembayaran" => (float) $header["total_pembayaran"],
+                "items"            => $items
+            ];
+            
+            echo json_encode($data);
+        } else {
+            // list transaksi tanpa detail
+            $result = $conn->query("SELECT * FROM transaksi ORDER BY id DESC");
+            $list   = [];
+            
+            while ($row = $result->fetch_assoc()) {
+                $list[] = [
+                    "id"               => (int) $row["id"],
+                    "tanggal"          => $row["tanggal"],
+                    "nama_pelanggan"   => $row["nama_pelanggan"],
+                    "total_pembayaran" => (float) $row["total_pembayaran"]
+                ];
+            }
+            
+            echo json_encode($list);
+        }
+        break;
+
+    // POST /api/transaksi.php
+    case 'POST':
+        if (!isset($input['tanggal']) || !isset($input['nama_pelanggan']) || !isset($input['items'])) {
+            http_response_code(400);
+            echo json_encode(["message" => "Data tidak lengkap"]);
+            break;
+        }
+        
+        $tanggal       = $conn->real_escape_string($input['tanggal']);
+        $namaPelanggan = $conn->real_escape_string($input['nama_pelanggan']);
+        $items         = $input['items'];   // array produk
+        
+        // hitung total
+        $total = 0;
+        foreach ($items as $item) {
+            $subtotal = $item['qty'] * $item['harga_satuan'];
+            $total   += $subtotal;
+        }
+        
+        // simpan header
+        $sqlTrans = "INSERT INTO transaksi (tanggal, nama_pelanggan, total_pembayaran) VALUES (?, ?, ?)";
+        $stmt = $conn->prepare($sqlTrans);
+        $stmt->bind_param("ssd", $tanggal, $namaPelanggan, $total);
+        $stmt->execute();
+        
+        $transaksiId = $conn->insert_id;
+        
+        // simpan detail
+        $sqlDetail = "INSERT INTO transaksi_detail (transaksi_id, produk_id, qty, harga_satuan, subtotal) VALUES (?, ?, ?, ?, ?)";
+        $stmtDetail = $conn->prepare($sqlDetail);
+        
+        foreach ($items as $item) {
+            $produkId     = (int) $item['produk_id'];
+            $qty          = (int) $item['qty'];
+            $hargaSatuan  = (float) $item['harga_satuan'];
+            $subtotal     = $qty * $hargaSatuan;
+            
+            $stmtDetail->bind_param("iiidd", $transaksiId, $produkId, $qty, $hargaSatuan, $subtotal);
+            $stmtDetail->execute();
+        }
+        
+        http_response_code(201);
+        echo json_encode([
+            "message" => "Transaksi berhasil dibuat",
+            "id"      => $transaksiId,
+            "total"   => $total
+        ]);
+        break;
+
+    // PUT /api/transaksi.php?id=7
+    case 'PUT':
+        // Ambil ID dari query parameter
+        if (!isset($_GET['id'])) {
+            http_response_code(400);
+            echo json_encode(["message" => "ID transaksi wajib diisi"]);
+            break;
+        }
+        
+        $id = (int) $_GET['id'];
+        
+        // Validasi input
+        if (!isset($input['tanggal']) || !isset($input['nama_pelanggan']) || !isset($input['items'])) {
+            http_response_code(400);
+            echo json_encode(["message" => "Data tidak lengkap"]);
+            break;
+        }
+        
+        $tanggal       = $conn->real_escape_string($input['tanggal']);
+        $namaPelanggan = $conn->real_escape_string($input['nama_pelanggan']);
+        $items         = $input['items'];
+        
+        // Hitung total baru
+        $total = 0;
+        foreach ($items as $item) {
+            $subtotal = $item['qty'] * $item['harga_satuan'];
+            $total   += $subtotal;
+        }
+        
+        // Mulai transaksi
+        $conn->begin_transaction();
+        
+        try {
+            // Update header transaksi
+            $sqlTrans = "UPDATE transaksi SET tanggal = ?, nama_pelanggan = ?, total_pembayaran = ? WHERE id = ?";
+            $stmt = $conn->prepare($sqlTrans);
+            $stmt->bind_param("ssdi", $tanggal, $namaPelanggan, $total, $id);
+            $stmt->execute();
+            
+            // Hapus detail lama
+            $sqlDelete = "DELETE FROM transaksi_detail WHERE transaksi_id = ?";
+            $stmtDelete = $conn->prepare($sqlDelete);
+            $stmtDelete->bind_param("i", $id);
+            $stmtDelete->execute();
+            
+            // Insert detail baru
+            $sqlDetail = "INSERT INTO transaksi_detail (transaksi_id, produk_id, qty, harga_satuan, subtotal) VALUES (?, ?, ?, ?, ?)";
+            $stmtDetail = $conn->prepare($sqlDetail);
+            
+            foreach ($items as $item) {
+                $produkId     = (int) $item['produk_id'];
+                $qty          = (int) $item['qty'];
+                $hargaSatuan  = (float) $item['harga_satuan'];
+                $subtotal     = $qty * $hargaSatuan;
+                
+                $stmtDetail->bind_param("iiidd", $id, $produkId, $qty, $hargaSatuan, $subtotal);
+                $stmtDetail->execute();
+            }
+            
+            // Commit transaksi
+            $conn->commit();
+            
+            http_response_code(200);
+            echo json_encode([
+                "message" => "Transaksi berhasil diupdate",
+                "id"      => $id,
+                "total"   => $total
+            ]);
+            
+        } catch (Exception $e) {
+            // Rollback jika error
+            $conn->rollback();
+            http_response_code(500);
+            echo json_encode([
+                "message" => "Gagal update transaksi",
+                "error"   => $e->getMessage()
+            ]);
+        }
+        break;
+
+    // DELETE /api/transaksi.php?id=7
+    case 'DELETE':
+        if (!isset($_GET['id'])) {
+            http_response_code(400);
+            echo json_encode(["message" => "ID transaksi wajib diisi"]);
+            break;
+        }
+        
+        $id = (int) $_GET['id'];
+        
+        // Mulai transaksi
+        $conn->begin_transaction();
+        
+        try {
+            // Hapus detail dulu (karena foreign key)
+            $sqlDeleteDetail = "DELETE FROM transaksi_detail WHERE transaksi_id = ?";
+            $stmt = $conn->prepare($sqlDeleteDetail);
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            
+            // Hapus header
+            $sqlDelete = "DELETE FROM transaksi WHERE id = ?";
+            $stmt = $conn->prepare($sqlDelete);
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            
+            $conn->commit();
+            
+            http_response_code(200);
+            echo json_encode(["message" => "Transaksi dihapus"]);
+            
+        } catch (Exception $e) {
+            $conn->rollback();
+            http_response_code(500);
+            echo json_encode([
+                "message" => "Gagal hapus transaksi",
+                "error"   => $e->getMessage()
+            ]);
+        }
+        break;
+
+    default:
+        http_response_code(405);
+        echo json_encode(["message" => "Method tidak didukung"]);
+        break;
+}
+
+$conn->close();
+?>
+
