@@ -62,11 +62,13 @@ npm run dev
 ### 2. Konfigurasi Build
 
 Vercel akan otomatis mendeteksi Vite project. Pastikan:
+
 - **Build Command**: `npm run build`
 - **Output Directory**: `dist`
 - **Install Command**: `npm install`
 
 File `vercel.json` sudah dikonfigurasi untuk:
+
 - SPA routing (semua route diarahkan ke `index.html`)
 - Security headers
 - Cache control untuk assets
