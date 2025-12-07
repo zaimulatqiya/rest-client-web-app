@@ -48,6 +48,51 @@ npm run dev
 - 📜 History panel untuk request sebelumnya
 - ⚡ Fast dengan Vite HMR
 
+## Deploy ke Vercel
+
+### 1. Setup Environment Variables di Vercel
+
+1. Buka project di Vercel Dashboard
+2. Pergi ke **Settings** → **Environment Variables**
+3. Tambahkan variable:
+   - **Name**: `VITE_API_BASE_URL`
+   - **Value**: URL API Anda (contoh: `https://api.example.com` atau `http://localhost` untuk development)
+   - **Environment**: Pilih Production, Preview, dan Development sesuai kebutuhan
+
+### 2. Konfigurasi Build
+
+Vercel akan otomatis mendeteksi Vite project. Pastikan:
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Install Command**: `npm install`
+
+File `vercel.json` sudah dikonfigurasi untuk:
+- SPA routing (semua route diarahkan ke `index.html`)
+- Security headers
+- Cache control untuk assets
+
+### 3. Troubleshooting Error 403
+
+Jika mendapat error 403 Forbidden:
+
+1. **Cek vercel.json**: Pastikan file `vercel.json` ada di root project
+2. **Cek Build Logs**: Pastikan build berhasil tanpa error
+3. **Cek Environment Variables**: Pastikan `VITE_API_BASE_URL` sudah di-set di Vercel
+4. **Redeploy**: Setelah mengubah konfigurasi, trigger redeploy
+
+### 4. Deploy Manual
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
+
+# Atau untuk production
+vercel --prod
+```
+
 ## Development
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
